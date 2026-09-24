@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\models\*.onnx" Link="models\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
     <None Update="YoloSegmentationBridge.py">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

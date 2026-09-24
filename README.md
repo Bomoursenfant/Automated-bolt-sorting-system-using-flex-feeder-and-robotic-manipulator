@@ -59,13 +59,20 @@ These files are used to:
 - Synchronize with the PLC and Vision PC.
 - Handle robot-side cycle and operating logic.
 
-### 4. Capstone Report
+### 4. `docs/`
 
-`M3CP2026_Group3_TrinhCongThanh_NguyenAnhTuan_HoangThiDuyen_IDEATECHNOLOGYSOLUTIONSJSC.pdf` is the full capstone report describing the system design, implementation, integration, experimental evaluation, and results.
+Project documentation and explanatory diagrams.
+
+- `docs/report/capstone-report.pdf`: full capstone report describing the system design, implementation, integration, experimental evaluation, and results.
+- `docs/images/`: communication, operation workflow, OpenCV, and YOLO theory diagrams.
 
 ### 5. Communication Architecture Diagram
 
-`Communication_architecture_diagram.png` is a communication / payload diagram showing the data exchanged between the system components. It should be read together with the system architecture and workflow sections below.
+`docs/images/communication-architecture.png` is a communication / payload diagram showing the data exchanged between the system components. It should be read together with the system architecture and workflow sections below.
+
+### 6. `models/`
+
+ONNX models used by the vision application. The project copies these models into the application output directory during build.
 
 ---
 
@@ -76,6 +83,8 @@ The system follows a hierarchical control architecture consisting of the Vision 
 The **Nachi CFD controller acts as the Cycle Master** and coordinates the recognition, picking, feeding, and purge sequence. The Vision PC runs `BoltPixelDetectorApp`, which performs image acquisition, machine vision processing, object filtering, coordinate transformation, and result transmission. The Keyence KV-5500 PLC controls the Flex Feeder and machine-side I/O operations. The VT5-W07 HMI provides operator monitoring and parameter configuration.
 
 ### High-Level Architecture
+
+![Communication Architecture](docs/images/communication-architecture.png)
 
 ```mermaid
 flowchart LR
@@ -117,7 +126,7 @@ The communication diagram describes the exchanged data, while the control archit
 
 The operating cycle is controlled by the robot and branches according to the returned `TotalDetect` value.
 
-![Overall Operation Flowchart](Overall_Operation_Flowchart.png)
+![Overall Operation Flowchart](docs/images/overall-operation-flowchart.png)
 
 The flowchart is a theoretical overview of the complete robot-driven cycle. The detailed implementation is described in the stages below, including vision inspection, robot picking, feeder redistribution, and purge control.
 
@@ -182,7 +191,7 @@ The vision system combines classical OpenCV processing with YOLO-based instance 
 
 `BoltDetector.cs` implements the preprocessing stack used before contour analysis:
 
-![OpenCV image processing algorithm (Pre-processing)](OpenCV%20image%20processing%20algorithm%20%28Pre-processing%29.png)
+![OpenCV image processing algorithm (Pre-processing)](docs/images/opencv-preprocessing-theory.png)
 
 The diagram summarizes the theoretical core of the pre-processing pipeline: BGR-to-grayscale conversion, edge-preserving noise reduction, background estimation, top-hat extraction of bright regions, and binary or Otsu thresholding. Its purpose is to stabilize bolt boundaries under metallic reflection conditions. The actual implementation continues with additional filters, enhancement, morphology, ROI handling, and contour processing listed below.
 
@@ -204,7 +213,7 @@ After preprocessing, the application extracts contours and computes geometric de
 
 `YoloSegmentationDetector.cs` uses **YOLO instance segmentation**, not only bounding-box detection.
 
-![Instance segmentation (YOLOv8 Segmentation)](Instance%20segmentation%20%28YOLOv8%20Segmentation%29.png)
+![Instance segmentation (YOLOv8 Segmentation)](docs/images/yolov8-segmentation-theory.png)
 
 At the theoretical level, YOLOv8-Segmentation produces the object position, class label, pixel-level mask, and confidence score. The mask supports size filtering and target-object isolation, while `MinAreaRect` provides the smallest rotated rectangle enclosing the mask region. The project uses mAP >= 0.90 and inference latency <= 40 ms as development targets; measured experimental results should be reported separately.
 
@@ -352,8 +361,9 @@ Before running the complete system, verify the relevant camera, network, robot, 
 ## Repository Notes
 
 - Keep the repository organized around the three main software/control domains: `BoltPixelDetectorApp`, `PLC_Keyence`, and `Robot_Nachi`.
-- Keep the capstone report at the repository root for project traceability and documentation completeness.
-- Keep `Communication_architecture_diagram.png` at the repository root when the README is intended to display the communication diagram directly.
+- Keep the capstone report under `docs/report/` for project traceability and documentation completeness.
+- Keep explanatory diagrams under `docs/images/` so documentation assets remain separate from source code.
+- Keep ONNX models under `models/`; do not place them in `bin/` or `obj/`.
 - Keep the `exports/` folder separate from the core source code because it contains generated test and runtime outputs.
 
 ---
@@ -362,7 +372,7 @@ Before running the complete system, verify the relevant camera, network, robot, 
 
 For the complete theoretical background, hardware description, system architecture, implementation details, communication design, experimental evaluation, and conclusions, refer to:
 
-`M3CP2026_Group3_TrinhCongThanh_NguyenAnhTuan_HoangThiDuyen_IDEATECHNOLOGYSOLUTIONSJSC.pdf`
+`docs/report/capstone-report.pdf`
 
 ---
 

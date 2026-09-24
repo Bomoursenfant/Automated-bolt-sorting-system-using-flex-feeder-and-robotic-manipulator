@@ -4,7 +4,7 @@ public static class SystemConfig
 {
     public static double SOFTWARE_GAIN = 1.0;
     public static double MIN_DETECTION_CONFIDENCE = 0.50;
-    public static string YOLO_MODEL_PATH = Path.Combine(AppContext.BaseDirectory, "best2.onnx");
+    public static string YOLO_MODEL_PATH = Path.Combine(AppContext.BaseDirectory, "models", "best-2.onnx");
     public static string YOLO_PYTHON_EXE = "python";
     public static int YOLO_IMAGE_SIZE = 640;
     public static double YOLO_NMS_THRESHOLD = 0.45;
