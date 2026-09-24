@@ -117,6 +117,10 @@ The communication diagram describes the exchanged data, while the control archit
 
 The operating cycle is controlled by the robot and branches according to the returned `TotalDetect` value.
 
+![Overall Operation Flowchart](Overall_Operation_Flowchart.png)
+
+The flowchart is a theoretical overview of the complete robot-driven cycle. The detailed implementation is described in the stages below, including vision inspection, robot picking, feeder redistribution, and purge control.
+
 ### Stage 1: Robot Requests Vision Inspection
 
 When the system is running in automatic mode, the Nachi CFD controller acts as the Cycle Master and operates as the TCP Socket Client.
@@ -178,6 +182,10 @@ The vision system combines classical OpenCV processing with YOLO-based instance 
 
 `BoltDetector.cs` implements the preprocessing stack used before contour analysis:
 
+![OpenCV image processing algorithm (Pre-processing)](OpenCV%20image%20processing%20algorithm%20%28Pre-processing%29.png)
+
+The diagram summarizes the theoretical core of the pre-processing pipeline: BGR-to-grayscale conversion, edge-preserving noise reduction, background estimation, top-hat extraction of bright regions, and binary or Otsu thresholding. Its purpose is to stabilize bolt boundaries under metallic reflection conditions. The actual implementation continues with additional filters, enhancement, morphology, ROI handling, and contour processing listed below.
+
 - BGR-to-grayscale conversion.
 - `BilateralFilter` to suppress noise while preserving edges.
 - `MedianBlur` to reduce texture and small local artifacts.
@@ -195,6 +203,10 @@ After preprocessing, the application extracts contours and computes geometric de
 ### YOLO Instance Segmentation
 
 `YoloSegmentationDetector.cs` uses **YOLO instance segmentation**, not only bounding-box detection.
+
+![Instance segmentation (YOLOv8 Segmentation)](Instance%20segmentation%20%28YOLOv8%20Segmentation%29.png)
+
+At the theoretical level, YOLOv8-Segmentation produces the object position, class label, pixel-level mask, and confidence score. The mask supports size filtering and target-object isolation, while `MinAreaRect` provides the smallest rotated rectangle enclosing the mask region. The project uses mAP >= 0.90 and inference latency <= 40 ms as development targets; measured experimental results should be reported separately.
 
 The application supports two inference paths.
 
