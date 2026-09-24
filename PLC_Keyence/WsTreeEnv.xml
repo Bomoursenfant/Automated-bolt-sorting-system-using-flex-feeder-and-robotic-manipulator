@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+	<Expanded>0</Expanded>
+	<Child>
+		<value.first>Unit configuration</value.first>
+		<value.second>
+			<Expanded>1</Expanded>
+			<Child>
+				<value.first>Unit configuration switching</value.first>
+				<value.second>
+					<Expanded>0</Expanded>
+				</value.second>
+			</Child>
+			<Child>
+				<value.first>[0]  KV-5500     R000/R500</value.first>
+				<value.second>
+					<Expanded>0</Expanded>
+					<Child>
+						<value.first>EtherNet/IP   R30000  DM10000</value.first>
+						<value.second>
+							<Expanded>0</Expanded>
+						</value.second>
+					</Child>
+				</value.second>
+			</Child>
+		</value.second>
+	</Child>
+</Root>
