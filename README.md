@@ -64,12 +64,11 @@ These files are used to:
 Project documentation and explanatory diagrams.
 
 - `docs/report/capstone-report.pdf`: full capstone report describing the system design, implementation, integration, experimental evaluation, and results.
-- `docs/images/`: communication, layered architecture, operation workflow, OpenCV, and YOLO theory diagrams.
-- `docs/diagrams/`: editable PlantUML source diagrams for system interactions.
+- `docs/diagrams/`: system architecture, workflow, vision-processing diagrams, and editable PlantUML source files.
 
-### 5. Communication Architecture Diagram
+### 5. System Data Transmission Diagram
 
-`docs/images/communication-architecture.png` is a communication / payload diagram showing the data exchanged between the system components. It should be read together with the system architecture and workflow sections below.
+`docs/diagrams/system-data-transmission-diagram.png` shows the data exchanged between the camera, Vision PC, robot, PLC, feeder, HMI, Flask service, and SQLite database. It should be read together with the system architecture and workflow sections below.
 
 ### 6. `models/`
 
@@ -85,9 +84,11 @@ The **Nachi CFD controller acts as the Cycle Master** and coordinates the recogn
 
 ### High-Level Architecture
 
-![Communication Architecture](docs/images/communication-architecture.png)
+![System Data Transmission Diagram](docs/diagrams/system-data-transmission-diagram.png)
 
-![Layered functional architecture of the system](docs/images/layered-functional-architecture-of-the-system.png)
+![Layered functional architecture of the system](docs/diagrams/layered-functional-architecture-of-the-system.png)
+
+![Module architecture block diagram of the WinForms application](docs/diagrams/module-architecture-block-diagram-of-the-WinForm-application.png)
 
 ```mermaid
 flowchart LR
@@ -221,7 +222,7 @@ The PlantUML source is maintained separately so that protocol details can be exp
 
 The operating cycle is controlled by the robot and branches according to the returned `TotalDetect` value.
 
-![Overall system algorithm flowchart](docs/images/overall-system-algorithm-flowchart.png)
+![Overall system algorithm flowchart](docs/diagrams/overall-system-algorithm-flowchart.png)
 
 The flowchart is a theoretical overview of the complete robot-driven cycle. The detailed implementation is described in the stages below, including vision inspection, robot picking, feeder redistribution, and purge control.
 
@@ -286,7 +287,7 @@ The vision system combines classical OpenCV processing with YOLO-based instance 
 
 `BoltDetector.cs` implements the preprocessing stack used before contour analysis:
 
-![OpenCV image processing algorithm (Pre-processing)](docs/images/opencv-preprocessing-theory.png)
+![OpenCV image processing algorithm (Pre-processing)](docs/diagrams/opencv-preprocessing-theory.png)
 
 The diagram summarizes the theoretical core of the pre-processing pipeline: BGR-to-grayscale conversion, edge-preserving noise reduction, background estimation, top-hat extraction of bright regions, and binary or Otsu thresholding. Its purpose is to stabilize bolt boundaries under metallic reflection conditions. The actual implementation continues with additional filters, enhancement, morphology, ROI handling, and contour processing listed below.
 
@@ -308,7 +309,7 @@ After preprocessing, the application extracts contours and computes geometric de
 
 `YoloSegmentationDetector.cs` uses **YOLO instance segmentation**, not only bounding-box detection.
 
-![Instance segmentation (YOLOv8 Segmentation)](docs/images/yolov8-segmentation-theory.png)
+![Instance segmentation (YOLOv8 Segmentation)](docs/diagrams/yolov8-segmentation-theory.png)
 
 At the theoretical level, YOLOv8-Segmentation produces the object position, class label, pixel-level mask, and confidence score. The mask supports size filtering and target-object isolation, while `MinAreaRect` provides the smallest rotated rectangle enclosing the mask region. The project uses mAP >= 0.90 and inference latency <= 40 ms as development targets; measured experimental results should be reported separately.
 
@@ -457,7 +458,7 @@ Before running the complete system, verify the relevant camera, network, robot, 
 
 - Keep the repository organized around the three main software/control domains: `BoltPixelDetectorApp`, `PLC_Keyence`, and `Robot_Nachi`.
 - Keep the capstone report under `docs/report/` for project traceability and documentation completeness.
-- Keep explanatory diagrams under `docs/images/` so documentation assets remain separate from source code.
+- Keep explanatory diagrams under `docs/diagrams/` so all documentation diagrams remain in one place.
 - Keep ONNX models under `models/`; do not place them in `bin/` or `obj/`.
 - Keep the `exports/` folder separate from the core source code because it contains generated test and runtime outputs.
 
