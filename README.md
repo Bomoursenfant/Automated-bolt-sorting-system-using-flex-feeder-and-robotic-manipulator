@@ -90,7 +90,21 @@ The **Nachi CFD controller acts as the Cycle Master** and coordinates the recogn
 
 ![Module architecture block diagram of the WinForms application](docs/diagrams/module-architecture-block-diagram-of-the-WinForm-application.png)
 
-The module architecture block diagram describes how the WinForms application processes an inspection: orchestration in `MainForm.cs`, vision processing, robot TCP communication, Flask integration, database persistence, and UI updates. It represents the internal application workflow rather than the system-wide functional layers.
+The module architecture block diagram describes the internal functional organization of the WinForms application. It is different from the layered functional architecture above: this diagram follows the application's processing modules and data flow, from image acquisition to robot dispatch, persistence, and operator feedback.
+
+The architecture described in Capstone Report Section 3.6.1 is organized into the following functional modules:
+
+- **Camera Manager:** initializes and terminates the Neptune camera connection, applies exposure settings, and captures frames. This responsibility is coordinated by `MainForm.cs` and `NeptuneCamera.cs`.
+- **Image Processing Module:** prepares each captured frame and controls the configured detection workflow. `MainForm.cs` orchestrates the processing cycle and ROI selection.
+- **OpenCV Processing Module:** performs filtering, binarization, morphology, contour extraction, geometric filtering, and scene-level binary analysis through `BoltDetector.cs`, `SceneBinaryContext.cs`, and related geometry code.
+- **YOLOv8 Segmentation Module:** runs ONNX inference through OpenCV DNN or the Python/Ultralytics bridge, reconstructs instance masks, applies NMS, and combines YOLO masks with the OpenCV binary mask through `YoloSegmentationDetector.cs`.
+- **Coordinate Transformation Module:** converts image coordinates into the robot working coordinate system using calibration and Homography logic in `CoordinateMapper.cs`.
+- **TCP Communication Module:** exchanges detection results, status messages, and coordinate batches with the Nachi controller through `RobotComms.cs`, supporting the configured socket and protocol modes.
+- **Robot Data Management Module:** represents, queues, filters, and synchronizes detection and robot-coordinate data through `DetectionResult.cs`, `RobotVisionModels.cs`, `RobotRequestMonitor.cs`, and `VisionDatabase.cs`.
+- **Logging and Alarm Module:** records processing measurements, communication events, database activity, faults, and cycle diagnostics through `LightProfiler.cs`, request monitoring, and database logging.
+- **User Interface Layer:** renders the camera stream, overlays, masks, detection table, robot status, configuration dialogs, and operator commands in `MainForm.cs` and the related WinForms controls.
+
+The data flow begins with the industrial camera and passes through image pre-processing, OpenCV/YOLO detection, size and robot-safety validation, and Homography-based coordinate transformation. Valid objects are converted into robot-ready results, sent to the Nachi controller, stored through the local database or Flask REST API when enabled, and displayed in the interface for real-time tracking. This is an application module workflow, not a complete OSI protocol model.
 
 ```mermaid
 flowchart LR
