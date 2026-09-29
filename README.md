@@ -90,6 +90,8 @@ The **Nachi CFD controller acts as the Cycle Master** and coordinates the recogn
 
 ![Module architecture block diagram of the WinForms application](docs/diagrams/module-architecture-block-diagram-of-the-WinForm-application.png)
 
+The module architecture block diagram describes how the WinForms application processes an inspection: orchestration in `MainForm.cs`, vision processing, robot TCP communication, Flask integration, database persistence, and UI updates. It represents the internal application workflow rather than the system-wide functional layers.
+
 ```mermaid
 flowchart LR
 
