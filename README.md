@@ -125,9 +125,95 @@ The communication diagram describes the exchanged data, while the control archit
 
 ### Vision-Guided Robotic Picking Sequence
 
-The [Vision-Guided Robotic Picking System sequence diagram](docs/diagrams/vision-guided-robotic-picking-system.puml) documents the system by protocol and responsibility. It covers machine and PC initialization, the continuous vision cycle, robot TCP socket modes, Flask HTTP/JSON persistence, and robot/PLC/feeder operations.
+The full editable source is available in [Sequence Diagram.puml](docs/diagrams/Sequence%20Diagram.puml). The rendered overview below documents the system by protocol and responsibility, including machine and PC initialization, the continuous vision cycle, robot TCP socket communication, Flask HTTP/JSON persistence, and robot/PLC/feeder operations.
 
-The diagram is maintained as editable PlantUML source so that protocol details and responsibilities can be updated together with the implementation.
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Cam as Camera
+  participant App as PC App Orchestrator
+  participant Vision as Vision Processing
+  participant TCP as Robot TCP Socket
+  participant Http as Flask HTTP Client
+  participant Flask as Flask REST API
+  participant DB as SQLite Database
+  participant Robot as Nachi Robot Controller
+  participant PLC as Keyence PLC
+  participant Feeder as Up/Down Feeder
+
+  rect rgb(235, 245, 255)
+    PLC->>Feeder: Move feeders to home position
+    PLC->>PLC: Initialize I/O modules
+    PLC-->>Robot: Feeder home signal
+    Robot->>Robot: Return to home position
+  end
+
+  rect rgb(235, 255, 240)
+    App->>App: Load robot connection settings
+    App->>TCP: Create and configure RobotComms
+    alt Socket mode: Server
+      TCP->>TCP: Open listener and wait for robot
+    else Socket mode: Client
+      TCP->>Robot: Connect to robot IP and port
+    end
+    App->>Vision: Load ONNX model from models/
+    App->>Cam: Open camera
+    opt Flask API enabled
+      App->>Http: CheckHealth()
+      Http->>Flask: GET /health
+      Flask->>DB: Initialize database
+      Flask-->>Http: HTTP 200 health status
+    end
+  end
+
+  loop Continuous vision processing
+    App->>Cam: Grab frame
+    Cam-->>App: Raw image frame
+    App->>Vision: Process frame and ROI
+    Vision->>Vision: Preprocess, YOLOv8-Seg, PCA, coordinates
+    alt Valid object detected
+      Vision-->>App: VisionResult list
+      App->>App: Select best object and deduplicate picks
+      App->>TCP: Send or queue X, Y, Angle
+      opt Flask API healthy
+        App->>Http: Send vision result
+        Http->>Flask: POST /api/vision/result
+        Flask->>DB: Save vision result
+        App->>Http: Send robot coordinates
+        Http->>Flask: POST /api/robot/coordinates
+        Flask->>DB: Save robot coordinates
+      end
+    else No valid object
+      Vision-->>App: No result
+      App->>App: Increment no-detection count
+    end
+    App->>App: Update UI, overlays, status, and history
+  end
+
+  loop Robot TCP cycle
+    Robot->>TCP: Connect, request, or send status
+    alt ASCII line protocol
+      TCP-->>Robot: X,Y,Angle or NO_DATA
+    else Binary batch protocol
+      TCP-->>Robot: Count header and float32 coordinates
+    end
+    TCP-->>App: Robot data/status event
+  end
+
+  alt Robot needs more parts
+    Robot->>PLC: Feed or flip command
+    PLC->>Feeder: Feed or flip operation
+    Feeder-->>PLC: Operation complete
+    PLC-->>Robot: PLC done signal
+  else Robot needs purge
+    Robot->>PLC: Purge command
+    PLC->>Feeder: Down Feeder purge operation
+    Feeder-->>PLC: Purge complete
+    PLC-->>Robot: PLC done signal
+  end
+```
+
+The PlantUML source is maintained separately so that protocol details can be expanded without making the README difficult to scan.
 
 ---
 
