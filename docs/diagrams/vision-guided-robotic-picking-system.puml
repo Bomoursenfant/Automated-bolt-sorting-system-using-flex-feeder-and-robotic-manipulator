@@ -1,0 +1,267 @@
+@startuml
+
+title Vision-Guided Robotic Picking System - PC Split by Protocol/Responsibility
+
+participant "Camera\n(iMitech USB/Industrial Camera)" as Cam
+
+participant "PC App Orchestrator\n(MainForm.cs\nWinForms UI + workflow)" as App
+participant "Vision Processing\n(YoloSegmentationDetector.cs\nYOLOv8-Seg + PCA)" as Vision
+participant "Robot TCP Socket\n(RobotComms.cs\nTCP Server/Client\nASCII line or Binary batch)" as TCP
+participant "Flask HTTP Client\n(FlaskApiClient.cs\nHTTP + JSON)" as HttpClient
+participant "Flask REST API\n(flask_api_server.py\nHTTP server)" as Flask
+database "SQLite Database\n(vision_results.db)" as DB
+
+participant "Robot Controller\n(Nachi MZ04 CFD\nUsertask configurable)" as Robot
+participant "PLC Controller\n(Keyence KV-5500)" as PLC
+participant "UPFeeder" as UPF
+participant "DOWNFeeder" as DWF
+
+
+== Machine Initialization ==
+
+activate PLC
+PLC -> UPF: Move to Home Position
+PLC -> DWF: Move to Home Position
+PLC -> PLC: Initialize I/O Modules
+PLC --> Robot: Feeder Home Signal = 1
+deactivate PLC
+
+Robot -> Robot: Return to Home Position
+
+
+== PC System Initialization ==
+
+activate App
+App -> App: Load RobotConnectionSettings.json
+
+App -> TCP: Create RobotComms(settings)
+activate TCP
+
+alt PC Socket Mode == Server
+    TCP -> TCP: Open TCP listener
+    TCP -> TCP: Bind PC Listen IP:Port\n(default 0.0.0.0:48951)
+    TCP -> TCP: Wait robot/user task connection
+else PC Socket Mode == Client
+    TCP -> Robot: Connect to Robot IP:Port
+    Robot --> TCP: TCP connection accepted
+end
+
+TCP --> App: Socket ready/offline status
+deactivate TCP
+
+App -> Vision: Load ONNX model\n(models/best-2.onnx)
+activate Vision
+Vision --> App: Vision engine ready
+deactivate Vision
+
+App -> Cam: Open camera
+activate Cam
+Cam --> App: Camera ready
+deactivate Cam
+
+opt Flask API enabled
+    App -> HttpClient: Create FlaskApiClient(baseUrl)
+    App -> HttpClient: CheckHealth()
+    activate HttpClient
+    HttpClient -> Flask: GET /health
+    activate Flask
+    Flask -> DB: Initialize/open SQLite database
+    DB --> Flask: Database ready
+    Flask --> HttpClient: HTTP 200 / health status
+    deactivate Flask
+    HttpClient --> App: Flask healthy/unavailable
+    deactivate HttpClient
+end
+
+opt Local database enabled
+    App -> DB: Initialize/open SQLite database\n(VisionDatabase.cs)
+    DB --> App: Database ready
+end
+
+deactivate App
+
+
+== Main Vision Processing Cycle ==
+
+loop Continuous camera processing
+    activate App
+
+    App -> Cam: Grab frame
+    activate Cam
+    Cam --> App: Raw image frame
+    deactivate Cam
+
+    App -> Vision: ProcessImage(frame, ROI)
+    activate Vision
+    Vision -> Vision: Apply preprocessing / ROI filter
+    Vision -> Vision: Run YOLOv8-Seg inference
+    Vision -> Vision: Detect bolts/nuts
+
+    alt AI Detected Object(s)? == YES
+        Vision -> Vision: Calculate centroid
+        Vision -> Vision: Calculate orientation angle (PCA)
+        Vision -> Vision: Convert pixel to robot mm coordinates
+        Vision -> Vision: Create VisionResult\n(Name, X, Y, Angle, Score)
+        Vision --> App: VisionResult list
+        deactivate Vision
+
+        App -> App: Select best object
+        App -> App: Deduplicate recent picks
+
+        App -> TCP: SendData(best VisionResult)
+        activate TCP
+
+        alt PC Socket Mode == Server
+            TCP -> TCP: Queue X,Y,Angle\nuntil robot requests data
+            TCP --> App: QUEUED status
+        else PC Socket Mode == Client and Protocol == ASCII line
+            TCP -> Robot: X,Y,Angle\\r\\n\n(TCP ASCII)
+            Robot --> TCP: Optional status/error text
+            TCP --> App: RobotDataEvent(status text)
+        else PC Socket Mode == Client and Protocol == Binary batch
+            TCP -> Robot: Header count,total\n+ float32 X,Y,Angle\n(TCP binary)
+            Robot --> TCP: Optional status/error text
+            TCP --> App: RobotDataEvent(status text)
+        end
+
+        deactivate TCP
+
+        opt Local DB active and Flask unavailable/off
+            App -> DB: INSERT vision_results
+            App -> DB: INSERT robot_coordinates\n(sent_to_plc = 0)
+            DB --> App: Save complete
+        end
+
+        opt Flask API healthy
+            App -> HttpClient: SendVisionResult(best)
+            activate HttpClient
+            HttpClient -> Flask: POST /api/vision/result\n(JSON)
+            activate Flask
+            Flask -> DB: INSERT vision_results
+            DB --> Flask: Save complete
+            Flask --> HttpClient: HTTP 201
+            deactivate Flask
+            HttpClient --> App: Success/fail
+            deactivate HttpClient
+
+            App -> HttpClient: SendRobotCoordinates(X,Y,Angle)
+            activate HttpClient
+            HttpClient -> Flask: POST /api/robot/coordinates\n(JSON)
+            activate Flask
+            Flask -> DB: INSERT robot_coordinates
+            DB --> Flask: Save complete
+            Flask --> HttpClient: HTTP 201
+            deactivate Flask
+            HttpClient --> App: Success/fail
+            deactivate HttpClient
+        end
+
+    else AI Detected Object(s)? == NO
+        Vision --> App: No result
+        deactivate Vision
+        App -> App: Increment NG/no-detection count
+        App -> App: Continue scanning
+    end
+
+    App -> App: Update UI display, overlays,\nrobot status and pick history
+    deactivate App
+end
+
+
+== Robot-Initiated TCP Socket Cycle ==
+
+loop Robot usertask connects or sends socket data
+    Robot -> TCP: TCP connect / request / status
+    activate TCP
+
+    alt Robot sends ASCII status/error text
+        Robot -> TCP: STATUS or ERROR text\n(TCP ASCII)
+        TCP -> App: RobotDataEvent(status text)
+        activate App
+
+        opt Local database enabled
+            App -> DB: INSERT robot_events
+            DB --> App: Save complete
+        end
+
+        opt Flask API healthy
+            App -> HttpClient: LogRobotEvent(status text)
+            activate HttpClient
+            HttpClient -> Flask: POST /api/robot/event\n(JSON)
+            activate Flask
+            Flask -> DB: INSERT robot_events
+            DB --> Flask: Save complete
+            Flask --> HttpClient: HTTP 201
+            deactivate Flask
+            HttpClient --> App: Success/fail
+            deactivate HttpClient
+        end
+
+        deactivate App
+
+        opt Protocol == ASCII line and coordinate queued
+            TCP -> Robot: X,Y,Angle\\r\\n
+        else Protocol == ASCII line and no coordinate queued
+            TCP -> Robot: NO_DATA\\r\\n
+        end
+
+    else Protocol == Binary batch and request byte == 1
+        Robot -> TCP: Request coordinate batch\n(byte 1)
+        TCP -> TCP: Snapshot queued coordinates
+        TCP -> Robot: Header count,total\n+ count * float32(X,Y,Angle)
+        TCP -> TCP: Dequeue sent coordinates
+        TCP -> App: REQ 1 SENT/TOTAL/LEFT status
+
+    else Protocol == Binary batch and request byte == 2
+        Robot -> TCP: Request available count\n(byte 2)
+        TCP -> Robot: Header total,total
+        TCP -> App: REQ 2 TOTAL status
+
+    else Unknown request/data
+        TCP -> App: Raw robot data status\n(no coordinate response)
+    end
+
+    deactivate TCP
+end
+
+
+== Robot / PLC / Feeder Operation ==
+
+activate Robot
+
+loop While robot has valid coordinate or remaining part count > 0
+    Robot -> Robot: Pick bolt/nut
+    Robot -> Robot: Place into target tray
+    Robot -> Robot: Update remaining count
+end
+
+alt Need purge parts
+    Robot -> PLC: Output purge command\n(example O4 = 1)
+    activate PLC
+    PLC -> DWF: Purge mode vibration
+    DWF --> PLC: Purge complete
+    PLC --> Robot: PLC DONE signal
+    deactivate PLC
+end
+
+alt Need feed more parts
+    Robot -> PLC: Output feed command\n(example O6 = 1)
+    activate PLC
+    PLC -> UPF: Feed parts
+    UPF --> PLC: Feed complete
+    PLC --> Robot: PLC DONE signal
+    deactivate PLC
+end
+
+alt Need flip parts
+    Robot -> PLC: Output flip command\n(example O5 = 1)
+    activate PLC
+    PLC -> DWF: Flip mode vibration
+    DWF --> PLC: Flip complete
+    PLC --> Robot: PLC DONE signal
+    deactivate PLC
+end
+
+deactivate Robot
+
+@enduml

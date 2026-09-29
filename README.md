@@ -65,6 +65,7 @@ Project documentation and explanatory diagrams.
 
 - `docs/report/capstone-report.pdf`: full capstone report describing the system design, implementation, integration, experimental evaluation, and results.
 - `docs/images/`: communication, operation workflow, OpenCV, and YOLO theory diagrams.
+- `docs/diagrams/`: editable PlantUML source diagrams for system interactions.
 
 ### 5. Communication Architecture Diagram
 
@@ -119,6 +120,12 @@ flowchart LR
 - **Vision PC ↔ Python vision service:** local API/service communication used by the application for the supported Python inference path.
 
 The communication diagram describes the exchanged data, while the control architecture describes the responsibility of each subsystem.
+
+### Vision-Guided Robotic Picking Sequence
+
+The [Vision-Guided Robotic Picking System sequence diagram](docs/diagrams/vision-guided-robotic-picking-system.puml) documents the system by protocol and responsibility. It covers machine and PC initialization, the continuous vision cycle, robot TCP socket modes, Flask HTTP/JSON persistence, and robot/PLC/feeder operations.
+
+The diagram is maintained as editable PlantUML source so that protocol details and responsibilities can be updated together with the implementation.
 
 ---
 
