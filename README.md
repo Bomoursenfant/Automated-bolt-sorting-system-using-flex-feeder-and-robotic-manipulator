@@ -64,7 +64,7 @@ These files are used to:
 Project documentation and explanatory diagrams.
 
 - `docs/report/capstone-report.pdf`: full capstone report describing the system design, implementation, integration, experimental evaluation, and results.
-- `docs/images/`: communication, operation workflow, OpenCV, and YOLO theory diagrams.
+- `docs/images/`: communication, layered architecture, operation workflow, OpenCV, and YOLO theory diagrams.
 - `docs/diagrams/`: editable PlantUML source diagrams for system interactions.
 
 ### 5. Communication Architecture Diagram
@@ -86,6 +86,8 @@ The **Nachi CFD controller acts as the Cycle Master** and coordinates the recogn
 ### High-Level Architecture
 
 ![Communication Architecture](docs/images/communication-architecture.png)
+
+![Layered functional architecture of the system](docs/images/layered-functional-architecture-of-the-system.png)
 
 ```mermaid
 flowchart LR
@@ -133,7 +135,7 @@ The diagram is maintained as editable PlantUML source so that protocol details a
 
 The operating cycle is controlled by the robot and branches according to the returned `TotalDetect` value.
 
-![Overall Operation Flowchart](docs/images/overall-operation-flowchart.png)
+![Overall system algorithm flowchart](docs/images/overall-system-algorithm-flowchart.png)
 
 The flowchart is a theoretical overview of the complete robot-driven cycle. The detailed implementation is described in the stages below, including vision inspection, robot picking, feeder redistribution, and purge control.
 
